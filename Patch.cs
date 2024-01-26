@@ -6,8 +6,6 @@ using System.Reflection.Emit;
 
 using HarmonyLib;
 
-using PhantomBrigade.Overworld;
-
 namespace EchKode.PBMods.CrashedUnitPilotView
 {
 	[HarmonyPatch]
@@ -17,18 +15,15 @@ namespace EchKode.PBMods.CrashedUnitPilotView
 		[HarmonyTranspiler]
 		static IEnumerable<CodeInstruction> Civcud_OnPilotStateRedrawTranspiler(IEnumerable<CodeInstruction> instructions, ILGenerator generator)
 		{
+			// Move the isUnitUncrewed check before isCrashing so that we don't try to show the full pilot view
+			// for uncrewed units.
+			//
 			// If the unit is crashing, also check if the combat overlay modifier is being pressed and show
 			// the normal pilot view if it is. Otherwise, show the unit crashing warning.
 
 			var cm = new CodeMatcher(instructions, generator);
+			var isUnitUncrewedMethodInfo = AccessTools.DeclaredPropertyGetter(typeof(CombatEntity), nameof(CombatEntity.isUnitUncrewed));
 			var isCrashingMethodInfo = AccessTools.DeclaredPropertyGetter(typeof(CombatEntity), nameof(CombatEntity.isCrashing));
-			var isFeatureUnlockedMethodInfo = AccessTools.DeclaredMethod(
-				typeof(OverworldUtility),
-				nameof(OverworldUtility.IsFeatureUnlocked),
-				new System.Type[]
-				{
-					typeof(string),
-				});
 			var getButtonMethodInfo = AccessTools.DeclaredMethod(
 				typeof(Rewired.Player),
 				nameof(Rewired.Player.GetButton),
@@ -36,14 +31,22 @@ namespace EchKode.PBMods.CrashedUnitPilotView
 				{
 					typeof(int),
 				});
+			var isUnitUncrewedMatch = new CodeMatch(OpCodes.Callvirt, isUnitUncrewedMethodInfo);
 			var isCrashingMatch = new CodeMatch(OpCodes.Callvirt, isCrashingMethodInfo);
-			var isFeatureUnlockedMatch = new CodeMatch(OpCodes.Call, isFeatureUnlockedMethodInfo);
 			var compareEqualMatch = new CodeMatch(OpCodes.Ceq);
 			var loadPlayer = CodeInstruction.LoadField(typeof(InputHelper), nameof(InputHelper.player));
 			var loadInputAction = CodeInstruction.LoadField(typeof(InputAction), nameof(InputAction.CombatToggleOverlay));
 			var getButton = new CodeInstruction(OpCodes.Callvirt, getButtonMethodInfo);
 
-			cm.MatchStartForward(isCrashingMatch)
+			cm.MatchStartForward(isUnitUncrewedMatch)
+				.Advance(-2);
+			var uncrewedInstructions = cm.Instructions(3);
+
+			cm.RemoveInstructions(3)
+				.MatchStartBackwards(isCrashingMatch)
+				.Advance(-2)
+				.InsertAndAdvance(uncrewedInstructions);
+			cm.MatchEndForward(isCrashingMatch)
 				.Advance(2);
 			cm.CreateLabel(out var noCrashLabel);
 			var branchNoCrash = new CodeInstruction(OpCodes.Brfalse_S, noCrashLabel);
