@@ -2,7 +2,7 @@
 
 A library mod for [Phantom Brigade](https://braceyourselfgames.com/phantom-brigade/) to show the normal pilot view for a crashing unit by holding down the left control key.
 
-It is compatible with game release version **1.1.3**. It works with both the Steam and Epic installs of the game. All library mods are fragile and susceptible to breakage whenever a new version is released.
+It is compatible with game release version **1.2.1**. It works with both the Steam and Epic installs of the game. All library mods are fragile and susceptible to breakage whenever a new version is released.
 
 When you select a unit in the planning phase of combat, normally you'll see the pilot's portrait and a bar with a number below it in the bottom left corner of the screen. The bar and number represent the concussion level of the pilot. However, when a unit is crashing, all you'll get in that space is a unit crashing warning. Here's a screenshot.
 
